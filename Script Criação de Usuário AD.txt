@@ -1,0 +1,38 @@
+Import-Module ActiveDirectory
+
+$GivenName = "Nome"
+$Surname = "Sobrenome"
+$DisplayName = "Nome Completo"
+$SamAccountName = "usuario"
+$UserPrincipalName = "email@dominio.com"
+$EmailAddress = "email@dominio.com"
+$Title = "Cargo"
+$Description = "Descrição do cargo"
+$Department = "Departamento"
+$Password = ConvertTo-SecureString "Senha" -AsPlainText -Force
+$Enabled = $true
+$ChangePasswordAtLogon = $true
+$OUPath = "OU=Colaboradores,DC=empresa,DC=com"
+
+try {
+ New-ADUser -Name $DisplayName `
+ -GivenName $GivenName `
+ -Surname $Surname `
+ -DisplayName $DisplayName `
+ -SamAccountName $SamAccountName `
+ -UserPrincipalName $UserPrincipalName `
+ -EmailAddress $EmailAddress `
+ -Title $Title `
+ -Description $Description `
+ -Department $Department `
+ -AccountPassword $Password `
+ -Enabled $Enabled `
+ -ChangePasswordAtLogon $ChangePasswordAtLogon `
+ -Path $OUPath `
+ -PassThru
+
+ Write-Host "Usuário $SamAccountName criado com sucesso!" -ForegroundColor Green
+}
+catch {
+ Write-Host "Erro ao criar o usuário: $_" -ForegroundColor Red
+}
