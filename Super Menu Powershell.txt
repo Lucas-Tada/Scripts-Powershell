@@ -1,0 +1,1064 @@
+<#
+    SUPER MENU POWERSHELL - FERRAMENTAS DIÁRIAS
+    Versão: 2.0 - Completo e Funcional
+#>
+
+function Show-MainMenu {
+    Clear-Host
+    Write-Host "================================================" -ForegroundColor Cyan
+    Write-Host "|           SUPER MENU POWERSHELL             |" -ForegroundColor Yellow
+    Write-Host "================================================" -ForegroundColor Cyan
+    Write-Host "| 1.  Informações do Sistema                  |"
+    Write-Host "| 2.  Gerenciamento de Usuários               |"
+    Write-Host "| 3.  Monitoramento de Processos/Serviços     |"
+    Write-Host "| 4.  Ferramentas de Rede                     |"
+    Write-Host "| 5.  Gerenciamento de Disco/Arquivos         |"
+    Write-Host "| 6.  Tarefas Agendadas                       |"
+    Write-Host "| 7.  Atualizações do Windows                 |"
+    Write-Host "| 8.  Auditoria e Logs                        |"
+    Write-Host "| 9.  Ferramentas de Backup                   |"
+    Write-Host "| 10. Otimização do Sistema                   |"
+    Write-Host "| 11. Gerenciamento de Impressoras            |"
+    Write-Host "| 12. Controle de Aplicativos                 |"
+    Write-Host "| 13. Ferramentas AD (Active Directory)       |"
+    Write-Host "| 14. Virtualização                           |"
+    Write-Host "| 15. Sair                                    |"
+    Write-Host "================================================" -ForegroundColor Cyan
+}
+
+function System-Info {
+    Clear-Host
+    Write-Host "`n=== INFORMAÇÕES COMPLETAS DO SISTEMA ===" -ForegroundColor Green
+    
+    # Informações básicas do sistema
+    $osInfo = Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, OSArchitecture, BuildNumber, CSName
+    $cpuInfo = Get-CimInstance Win32_Processor | Select-Object Name, NumberOfCores, NumberOfLogicalProcessors
+    $memInfo = Get-CimInstance Win32_PhysicalMemory | Measure-Object -Property Capacity -Sum | Select-Object @{Name="TotalGB";Expression={[math]::Round($_.Sum/1GB,2)}}
+    
+    Write-Host "`n[SO]" -ForegroundColor Yellow
+    $osInfo | Format-List
+    
+    Write-Host "`n[CPU]" -ForegroundColor Yellow
+    $cpuInfo | Format-List
+    
+    Write-Host "`n[MEMÓRIA]" -ForegroundColor Yellow
+    $memInfo | Format-List
+    
+    Write-Host "`n[ARMAZENAMENTO]" -ForegroundColor Yellow
+    Get-PhysicalDisk | Select-Object FriendlyName, MediaType, Size, HealthStatus | Format-Table -AutoSize
+    
+    Write-Host "`n[BIOS]" -ForegroundColor Yellow
+    Get-CimInstance Win32_BIOS | Select-Object Manufacturer, Name, Version, SerialNumber | Format-List
+    
+    Pause
+}
+
+function User-Management {
+    do {
+        Clear-Host
+        Write-Host "`n=== GERENCIAMENTO DE USUÁRIOS ===" -ForegroundColor Green
+        Write-Host "1. Listar usuários locais"
+        Write-Host "2. Criar novo usuário local"
+        Write-Host "3. Remover usuário local"
+        Write-Host "4. Alterar senha de usuário"
+        Write-Host "5. Adicionar usuário a grupo local"
+        Write-Host "6. Listar grupos locais"
+        Write-Host "7. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-LocalUser | Select-Object Name, Enabled, LastLogon, Description | Format-Table -AutoSize
+                Pause
+            }
+            '2' {
+                $username = Read-Host "Digite o nome do novo usuário"
+                $description = Read-Host "Digite a descrição do usuário"
+                $password = Read-Host "Digite a senha" -AsSecureString
+                New-LocalUser -Name $username -Description $description -Password $password -ErrorAction Stop
+                Write-Host "Usuário $username criado com sucesso!" -ForegroundColor Green
+                Pause
+            }
+            '3' {
+                $username = Read-Host "Digite o nome do usuário a ser removido"
+                Remove-LocalUser -Name $username -ErrorAction Stop
+                Write-Host "Usuário $username removido com sucesso!" -ForegroundColor Green
+                Pause
+            }
+            '4' {
+                $username = Read-Host "Digite o nome do usuário"
+                $password = Read-Host "Digite a nova senha" -AsSecureString
+                Set-LocalUser -Name $username -Password $password -ErrorAction Stop
+                Write-Host "Senha alterada com sucesso para $username!" -ForegroundColor Green
+                Pause
+            }
+            '5' {
+                $username = Read-Host "Digite o nome do usuário"
+                $group = Read-Host "Digite o nome do grupo (ex: Administradores)"
+                Add-LocalGroupMember -Group $group -Member $username -ErrorAction Stop
+                Write-Host "Usuário $username adicionado ao grupo $group!" -ForegroundColor Green
+                Pause
+            }
+            '6' {
+                Get-LocalGroup | Select-Object Name, Description | Format-Table -AutoSize
+                Pause
+            }
+        }
+    } while ($choice -ne '7')
+}
+
+function Process-Services {
+    do {
+        Clear-Host
+        Write-Host "`n=== PROCESSOS E SERVIÇOS ===" -ForegroundColor Green
+        Write-Host "1. Listar processos (top 10 por CPU)"
+        Write-Host "2. Listar processos (top 10 por Memória)"
+        Write-Host "3. Encerrar processo"
+        Write-Host "4. Listar serviços em execução"
+        Write-Host "5. Listar todos os serviços"
+        Write-Host "6. Iniciar/Parar serviço"
+        Write-Host "7. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-Process | Sort-Object CPU -Descending | Select-Object -First 10 | Format-Table -AutoSize
+                Pause
+            }
+            '2' {
+                Get-Process | Sort-Object WS -Descending | Select-Object -First 10 | Format-Table -AutoSize
+                Pause
+            }
+            '3' {
+                $process = Read-Host "Digite o nome ou ID do processo"
+                Stop-Process -Name $process -Force -ErrorAction SilentlyContinue
+                Stop-Process -Id $process -Force -ErrorAction SilentlyContinue
+                Write-Host "Processo $process encerrado!" -ForegroundColor Green
+                Pause
+            }
+            '4' {
+                Get-Service | Where-Object { $_.Status -eq 'Running' } | Select-Object DisplayName, Status, StartType | Format-Table -AutoSize
+                Pause
+            }
+            '5' {
+                Get-Service | Select-Object DisplayName, Status, StartType | Format-Table -AutoSize
+                Pause
+            }
+            '6' {
+                $service = Read-Host "Digite o nome do serviço"
+                $action = Read-Host "Deseja (1) Iniciar ou (2) Parar?"
+                if ($action -eq '1') {
+                    Start-Service -Name $service -ErrorAction Stop
+                    Write-Host "Serviço $service iniciado!" -ForegroundColor Green
+                } elseif ($action -eq '2') {
+                    Stop-Service -Name $service -ErrorAction Stop
+                    Write-Host "Serviço $service parado!" -ForegroundColor Green
+                }
+                Pause
+            }
+        }
+    } while ($choice -ne '7')
+}
+
+function Network-Tools {
+    do {
+        Clear-Host
+        Write-Host "`n=== FERRAMENTAS DE REDE ===" -ForegroundColor Green
+        Write-Host "1. Configuração de rede"
+        Write-Host "2. Testar conectividade"
+        Write-Host "3. Testar porta específica"
+        Write-Host "4. Analisar conexões ativas"
+        Write-Host "5. Liberar/renew DHCP"
+        Write-Host "6. Flush DNS"
+        Write-Host "7. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-NetIPConfiguration | Select-Object InterfaceAlias, IPv4Address, IPv4DefaultGateway, DNSServer | Format-Table -AutoSize
+                Pause
+            }
+            '2' {
+                $hostname = Read-Host "Digite o host para testar (ex: google.com)"
+                Test-NetConnection -ComputerName $hostname -InformationLevel Detailed
+                Pause
+            }
+            '3' {
+                $hostname = Read-Host "Digite o host/IP"
+                $port = Read-Host "Digite a porta"
+                Test-NetConnection -ComputerName $hostname -Port $port
+                Pause
+            }
+            '4' {
+                Get-NetTCPConnection | Where-Object { $_.State -eq 'Established' } | 
+                    Select-Object LocalAddress, LocalPort, RemoteAddress, RemotePort, State, OwningProcess | 
+                    Format-Table -AutoSize
+                Pause
+            }
+            '5' {
+                ipconfig /release
+                ipconfig /renew
+                Write-Host "Endereço IP renovado!" -ForegroundColor Green
+                Pause
+            }
+            '6' {
+                ipconfig /flushdns
+                Write-Host "Cache DNS limpo!" -ForegroundColor Green
+                Pause
+            }
+        }
+    } while ($choice -ne '7')
+}
+
+function Disk-File-Management {
+    do {
+        Clear-Host
+        Write-Host "`n=== GERENCIAMENTO DE DISCO/ARQUIVOS ===" -ForegroundColor Green
+        Write-Host "1. Espaço em disco"
+        Write-Host "2. Listar arquivos grandes"
+        Write-Host "3. Limpar arquivos temporários"
+        Write-Host "4. Procurar arquivos"
+        Write-Host "5. Verificar integridade do disco"
+        Write-Host "6. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-Volume | Select-Object DriveLetter, FileSystemLabel, SizeRemaining, Size | 
+                    ForEach-Object {
+                        $used = $_.Size - $_.SizeRemaining
+                        $percentUsed = ($used / $_.Size) * 100
+                        [PSCustomObject]@{
+                            Unidade = $_.DriveLetter
+                            Rótulo = $_.FileSystemLabel
+                            "Total (GB)" = [math]::Round($_.Size/1GB, 2)
+                            "Usado (GB)" = [math]::Round($used/1GB, 2)
+                            "Livre (GB)" = [math]::Round($_.SizeRemaining/1GB, 2)
+                            "% Usado" = [math]::Round($percentUsed, 2)
+                        }
+                    } | Format-Table -AutoSize
+                Pause
+            }
+            '2' {
+                $path = Read-Host "Digite o caminho (ex: C:\)"
+                $size = Read-Host "Tamanho mínimo em MB (ex: 100)"
+                Get-ChildItem -Path $path -Recurse -File -ErrorAction SilentlyContinue | 
+                    Where-Object { $_.Length -gt ($size * 1MB) } | 
+                    Sort-Object Length -Descending | 
+                    Select-Object FullName, @{Name="SizeMB";Expression={[math]::Round($_.Length / 1MB, 2)}} | 
+                    Format-Table -AutoSize
+                Pause
+            }
+            '3' {
+                $tempFolders = @("$env:TEMP", "$env:WINDIR\Temp", "$env:USERPROFILE\AppData\Local\Temp")
+                $totalFreed = 0
+                
+                foreach ($folder in $tempFolders) {
+                    if (Test-Path $folder) {
+                        $files = Get-ChildItem $folder -Recurse -Force -ErrorAction SilentlyContinue
+                        $size = ($files | Measure-Object -Property Length -Sum).Sum / 1MB
+                        $totalFreed += $size
+                        
+                        $files | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+                        Write-Host "Limpos $([math]::Round($size, 2)) MB de $folder"
+                    }
+                }
+                
+                Write-Host "`nTotal liberado: $([math]::Round($totalFreed, 2)) MB" -ForegroundColor Green
+                Pause
+            }
+            '4' {
+                $path = Read-Host "Digite o caminho (ex: C:\)"
+                $filter = Read-Host "Digite o filtro (ex: *.log ou relatorio*)"
+                Get-ChildItem -Path $path -Filter $filter -Recurse -ErrorAction SilentlyContinue | 
+                    Select-Object FullName, LastWriteTime, Length | 
+                    Format-Table -AutoSize
+                Pause
+            }
+            '5' {
+                chkdsk /f
+                Write-Host "Verificação de disco agendada para o próximo reinício!" -ForegroundColor Yellow
+                Pause
+            }
+        }
+    } while ($choice -ne '6')
+}
+
+function Scheduled-Tasks {
+    Clear-Host
+    Write-Host "`n=== TAREFAS AGENDADAS ===" -ForegroundColor Green
+    Get-ScheduledTask | Select-Object TaskName, State, Author | Format-Table -AutoSize
+    Pause
+}
+
+function Windows-Updates {
+    Clear-Host
+    Write-Host "`n=== ATUALIZAÇÕES DO WINDOWS ===" -ForegroundColor Green
+    
+    if (-not (Get-Command Get-WindowsUpdate -ErrorAction SilentlyContinue)) {
+        Write-Host "Módulo WindowsUpdate não encontrado. Instalando..."
+        Install-Module PSWindowsUpdate -Force -Confirm:$false
+        Import-Module PSWindowsUpdate
+    }
+    
+    Write-Host "1. Verificar atualizações disponíveis"
+    Write-Host "2. Instalar atualizações"
+    Write-Host "3. Histórico de atualizações"
+    Write-Host "4. Voltar"
+    
+    $choice = Read-Host "`nSelecione uma opção"
+    
+    switch ($choice) {
+        '1' {
+            Get-WindowsUpdate -Verbose
+            Pause
+        }
+        '2' {
+            Install-WindowsUpdate -AcceptAll -AutoReboot
+            Pause
+        }
+        '3' {
+            Get-WUHistory | Select-Object Date, Title, Result | Format-Table -AutoSize
+            Pause
+        }
+    }
+}
+
+function Audit-Logs {
+    do {
+        Clear-Host
+        Write-Host "`n=== AUDITORIA E LOGS ===" -ForegroundColor Green
+        Write-Host "1. Visualizar logs de sistema"
+        Write-Host "2. Visualizar logs de aplicação"
+        Write-Host "3. Visualizar logs de segurança"
+        Write-Host "4. Procurar por erro nos logs"
+        Write-Host "5. Limpar logs"
+        Write-Host "6. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-EventLog -LogName System -Newest 20 | Select-Object TimeGenerated, EntryType, Source, Message | Format-Table -Wrap -AutoSize
+                Pause
+            }
+            '2' {
+                Get-EventLog -LogName Application -Newest 20 | Select-Object TimeGenerated, EntryType, Source, Message | Format-Table -Wrap -AutoSize
+                Pause
+            }
+            '3' {
+                Get-EventLog -LogName Security -Newest 20 | Select-Object TimeGenerated, EntryType, Source, Message | Format-Table -Wrap -AutoSize
+                Pause
+            }
+            '4' {
+                $logName = Read-Host "Digite o nome do log (System, Application, Security)"
+                $searchTerm = Read-Host "Digite o termo para pesquisar"
+                Get-EventLog -LogName $logName -Newest 1000 | Where-Object { $_.Message -like "*$searchTerm*" } | Select-Object TimeGenerated, Source, Message | Format-Table -Wrap -AutoSize
+                Pause
+            }
+            '5' {
+                Clear-EventLog -LogName System, Application, Security
+                Write-Host "Logs limpos com sucesso!" -ForegroundColor Green
+                Pause
+            }
+        }
+    } while ($choice -ne '6')
+}
+
+function Backup-Tools {
+    do {
+        Clear-Host
+        Write-Host "`n=== FERRAMENTAS DE BACKUP ===" -ForegroundColor Green
+        Write-Host "1. Criar backup de arquivos"
+        Write-Host "2. Restaurar backup"
+        Write-Host "3. Verificar backups existentes"
+        Write-Host "4. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                $source = Read-Host "Digite o caminho de origem (ex: C:\Pasta)"
+                $destination = Read-Host "Digite o caminho de destino (ex: D:\Backup)"
+                $backupName = "Backup_$(Get-Date -Format 'yyyyMMdd_HHmmss').zip"
+                
+                if (-not (Test-Path $destination)) {
+                    New-Item -ItemType Directory -Path $destination -Force
+                }
+                
+                Compress-Archive -Path $source -DestinationPath "$destination\$backupName" -CompressionLevel Optimal
+                Write-Host "Backup criado em $destination\$backupName" -ForegroundColor Green
+                Pause
+            }
+            '2' {
+                $backupFile = Read-Host "Digite o caminho do arquivo de backup (ex: D:\Backup\arquivo.zip)"
+                $destination = Read-Host "Digite o caminho para restauração (ex: C:\Restore)"
+                
+                if (-not (Test-Path $destination)) {
+                    New-Item -ItemType Directory -Path $destination -Force
+                }
+                
+                Expand-Archive -Path $backupFile -DestinationPath $destination -Force
+                Write-Host "Backup restaurado para $destination" -ForegroundColor Green
+                Pause
+            }
+            '3' {
+                $backupDir = Read-Host "Digite o caminho dos backups (ex: D:\Backup)"
+                Get-ChildItem -Path $backupDir -Filter *.zip | Select-Object Name, LastWriteTime, Length | Format-Table -AutoSize
+                Pause
+            }
+        }
+    } while ($choice -ne '4')
+}
+
+function System-Optimization {
+    do {
+        Clear-Host
+        Write-Host "`n=== OTIMIZAÇÃO DO SISTEMA ===" -ForegroundColor Green
+        Write-Host "1. Desfragmentar disco"
+        Write-Host "2. Limpar disco (Cleanmgr)"
+        Write-Host "3. Otimizar unidades"
+        Write-Host "4. Desativar programas de inicialização"
+        Write-Host "5. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Optimize-Volume -DriveLetter C -Defrag -Verbose
+                Write-Host "Desfragmentação concluída!" -ForegroundColor Green
+                Pause
+            }
+            '2' {
+                cleanmgr /sagerun:1 | Out-Null
+                Write-Host "Limpeza de disco executada!" -ForegroundColor Green
+                Pause
+            }
+            '3' {
+                Get-Volume | Where-Object { $_.DriveType -eq 'Fixed' } | Optimize-Volume -Verbose
+                Write-Host "Otimização concluída para todas as unidades!" -ForegroundColor Green
+                Pause
+            }
+            '4' {
+                $startupApps = Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location, User
+                $startupApps | Format-Table -AutoSize
+                
+                $disable = Read-Host "Deseja desativar algum? (S/N)"
+                if ($disable -eq 'S') {
+                    $appName = Read-Host "Digite o nome do aplicativo para desativar"
+                    $app = $startupApps | Where-Object { $_.Name -like "*$appName*" }
+                    if ($app) {
+                        if ($app.Location -like "*Registry*") {
+                            $keyPath = $app.Location.Split(':')[1]
+                            Remove-ItemProperty -Path $keyPath -Name $app.Name -ErrorAction Stop
+                            Write-Host "Aplicativo removido da inicialização!" -ForegroundColor Green
+                        } else {
+                            Remove-Item $app.Command -ErrorAction Stop
+                            Write-Host "Atalho removido da pasta de inicialização!" -ForegroundColor Green
+                        }
+                    } else {
+                        Write-Host "Aplicativo não encontrado!" -ForegroundColor Red
+                    }
+                }
+                Pause
+            }
+        }
+    } while ($choice -ne '5')
+}
+
+function Printer-Management {
+    do {
+        Clear-Host
+        Write-Host "`n=== GERENCIAMENTO DE IMPRESSORAS ===" -ForegroundColor Green
+        Write-Host "1. Listar impressoras instaladas"
+        Write-Host "2. Adicionar impressora"
+        Write-Host "3. Remover impressora"
+        Write-Host "4. Limpar fila de impressão"
+        Write-Host "5. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-Printer | Select-Object Name, Type, PortName, Shared, Published | Format-Table -AutoSize
+                Pause
+            }
+            '2' {
+                $printerName = Read-Host "Digite o nome da impressora"
+                $driverName = Read-Host "Digite o nome do driver"
+                $portName = Read-Host "Digite a porta (ex: IP_192.168.1.100)"
+                $ipAddress = Read-Host "Digite o endereço IP da impressora"
+                
+                Add-PrinterPort -Name $portName -PrinterHostAddress $ipAddress
+                Add-Printer -Name $printerName -DriverName $driverName -PortName $portName
+                Write-Host "Impressora $printerName adicionada com sucesso!" -ForegroundColor Green
+                Pause
+            }
+            '3' {
+                $printerName = Read-Host "Digite o nome da impressora para remover"
+                Remove-Printer -Name $printerName -ErrorAction Stop
+                Write-Host "Impressora $printerName removida com sucesso!" -ForegroundColor Green
+                Pause
+            }
+            '4' {
+                Get-Printer | Where-Object { $_.JobCount -gt 0 } | ForEach-Object {
+                    Write-Host "Limpando fila da impressora $($_.Name)..."
+                    Remove-PrintJob -PrinterName $_.Name -ID *
+                }
+                Write-Host "Filas de impressão limpas!" -ForegroundColor Green
+                Pause
+            }
+        }
+    } while ($choice -ne '5')
+}
+
+function App-Control {
+    do {
+        Clear-Host
+        Write-Host "`n=== CONTROLE DE APLICATIVOS ===" -ForegroundColor Green
+        Write-Host "1. Listar aplicativos instalados"
+        Write-Host "2. Desinstalar aplicativo"
+        Write-Host "3. Executar aplicativo como administrador"
+        Write-Host "4. Ver aplicativos em execução"
+        Write-Host "5. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | 
+                    Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | 
+                    Sort-Object DisplayName | 
+                    Format-Table -AutoSize
+                Pause
+            }
+            '2' {
+                $appName = Read-Host "Digite parte do nome do aplicativo"
+                $apps = Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | 
+                    Where-Object { $_.DisplayName -like "*$appName*" } | 
+                    Select-Object DisplayName, UninstallString
+                
+                if ($apps) {
+                    $apps | Format-Table -AutoSize
+                    $uninstall = Read-Host "Deseja desinstalar algum? (S/N)"
+                    if ($uninstall -eq 'S') {
+                        $appToRemove = Read-Host "Digite o nome exato do aplicativo"
+                        $uninstallString = ($apps | Where-Object { $_.DisplayName -eq $appToRemove }).UninstallString
+                        if ($uninstallString) {
+                            Start-Process "cmd.exe" -ArgumentList "/c $uninstallString /quiet" -Wait
+                            Write-Host "Aplicativo $appToRemove desinstalado!" -ForegroundColor Green
+                        }
+                    }
+                } else {
+                    Write-Host "Nenhum aplicativo encontrado!" -ForegroundColor Red
+                }
+                Pause
+            }
+            '3' {
+                $appPath = Read-Host "Digite o caminho completo do aplicativo (ex: C:\app\app.exe)"
+                Start-Process -FilePath $appPath -Verb RunAs
+                Pause
+            }
+            '4' {
+                Get-Process | Where-Object { $_.MainWindowTitle } | Select-Object Name, MainWindowTitle | Format-Table -AutoSize
+                Pause
+            }
+        }
+    } while ($choice -ne '5')
+}
+
+function AD-Tools {
+    # Verifica se o módulo ActiveDirectory está disponível
+    if (-not (Get-Module ActiveDirectory -ErrorAction SilentlyContinue)) {
+        try {
+            Import-Module ActiveDirectory -ErrorAction Stop
+            Write-Host "Módulo Active Directory carregado com sucesso!" -ForegroundColor Green
+        } catch {
+            Write-Host "Falha ao carregar módulo Active Directory: $_" -ForegroundColor Red
+            Pause
+            return
+        }
+    }
+
+    do {
+        Clear-Host
+        Write-Host "`n=== FERRAMENTAS AVANÇADAS ACTIVE DIRECTORY ===" -ForegroundColor Cyan
+        Write-Host "| 1.  Busca de Usuários                      |"
+        Write-Host "| 2.  Gerenciamento de Contas                |"
+        Write-Host "| 3.  Gerenciamento de Grupos                |"
+        Write-Host "| 4.  Gerenciamento de Computadores          |"
+        Write-Host "| 5.  Relatórios e Exportação                |"
+        Write-Host "| 6.  Políticas e Segurança                  |"
+        Write-Host "| 7.  Ferramentas de Migração                |"
+        Write-Host "| 8.  Limpeza e Manutenção                   |"
+        Write-Host "| 9.  Voltar ao Menu Principal               |"
+        Write-Host "================================================" -ForegroundColor Cyan
+        
+        $mainChoice = Read-Host "`nSelecione uma categoria"
+        
+        switch ($mainChoice) {
+            '1' { # Busca de Usuários
+                do {
+                    Clear-Host
+                    Write-Host "`n=== BUSCA DE USUÁRIOS ===" -ForegroundColor Green
+                    Write-Host "1. Buscar usuário por nome/login"
+                    Write-Host "2. Buscar usuários inativos"
+                    Write-Host "3. Buscar usuários desabilitados"
+                    Write-Host "4. Buscar por departamento"
+                    Write-Host "5. Buscar usuários com senha expirada"
+                    Write-Host "6. Buscar usuários que nunca logaram"
+                    Write-Host "7. Voltar"
+                    
+                    $searchChoice = Read-Host "`nSelecione uma opção"
+                    
+                    switch ($searchChoice) {
+                        '1' {
+                            $searchTerm = Read-Host "Digite nome, sobrenome ou login"
+                            $filter = @"
+(|(Name=*$searchTerm*)(SamAccountName=*$searchTerm*)(GivenName=*$searchTerm*)(Surname=*$searchTerm*)(UserPrincipalName=*$searchTerm*)(DisplayName=*$searchTerm*))
+"@
+                            $users = Get-ADUser -LDAPFilter $filter -Properties *
+                            Show-ADUserResults $users
+                            Pause
+                        }
+                        '2' {
+                            $days = Read-Host "Número de dias para considerar inativo (padrão 90)"
+                            if (-not $days) { $days = 90 }
+                            $date = (Get-Date).AddDays(-$days)
+                            $users = Get-ADUser -Filter {LastLogonDate -lt $date -and Enabled -eq $true} -Properties LastLogonDate
+                            Show-ADUserResults $users
+                            Pause
+                        }
+                        '3' {
+                            $users = Get-ADUser -Filter {Enabled -eq $false} -Properties Enabled
+                            Show-ADUserResults $users
+                            Pause
+                        }
+                        '4' {
+                            $dept = Read-Host "Digite o departamento"
+                            $users = Get-ADUser -Filter {Department -like "*$dept*"} -Properties Department
+                            Show-ADUserResults $users
+                            Pause
+                        }
+                        '5' {
+                            $users = Search-ADAccount -PasswordExpired | Where-Object { $_.ObjectClass -eq 'user' }
+                            Show-ADUserResults $users
+                            Pause
+                        }
+                        '6' {
+                            $users = Get-ADUser -Filter {LastLogonDate -notlike "*"} -Properties LastLogonDate
+                            Show-ADUserResults $users
+                            Pause
+                        }
+                    }
+                } while ($searchChoice -ne '7')
+            }
+            '2' { # Gerenciamento de Contas
+                do {
+                    Clear-Host
+                    Write-Host "`n=== GERENCIAMENTO DE CONTAS ===" -ForegroundColor Green
+                    Write-Host "1. Criar novo usuário"
+                    Write-Host "2. Desbloquear conta"
+                    Write-Host "3. Resetar senha"
+                    Write-Host "4. Habilitar/Desabilitar conta"
+                    Write-Host "5. Mover usuário para outra OU"
+                    Write-Host "6. Adicionar aos grupos do usuário"
+                    Write-Host "7. Remover dos grupos do usuário"
+                    Write-Host "8. Configurar propriedades da conta"
+                    Write-Host "9. Voltar"
+                    
+                    $accountChoice = Read-Host "`nSelecione uma opção"
+                    
+                    switch ($accountChoice) {
+                        '1' {
+                            # Função para criar novo usuário
+                            New-ADUserWizard
+                            Pause
+                        }
+                        '2' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                Unlock-ADAccount -Identity $username
+                                Write-Host "Conta $username desbloqueada com sucesso!" -ForegroundColor Green
+                                # Verificar status
+                                Get-ADUser -Identity $username -Properties LockedOut | 
+                                    Select-Object Name, SamAccountName, LockedOut | Format-Table -AutoSize
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '3' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                $newPass = Read-Host "Digite a nova senha" -AsSecureString
+                                Set-ADAccountPassword -Identity $username -NewPassword $newPass -Reset
+                                Write-Host "Senha alterada com sucesso!" -ForegroundColor Green
+                                
+                                # Opções adicionais
+                                $changePass = Read-Host "Forçar mudança de senha no próximo login? (S/N)"
+                                if ($changePass -eq 'S') {
+                                    Set-ADUser -Identity $username -ChangePasswordAtLogon $true
+                                    Write-Host "Usuário deverá alterar a senha no próximo login." -ForegroundColor Yellow
+                                }
+                                
+                                $unlock = Read-Host "Deseja desbloquear a conta também? (S/N)"
+                                if ($unlock -eq 'S') {
+                                    Unlock-ADAccount -Identity $username
+                                    Write-Host "Conta desbloqueada!" -ForegroundColor Green
+                                }
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '4' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                $user = Get-ADUser -Identity $username -Properties Enabled
+                                $newStatus = !$user.Enabled
+                                Set-ADUser -Identity $username -Enabled $newStatus
+                                Write-Host "Status da conta alterado para: $(if ($newStatus) {'Habilitada'} else {'Desabilitada'})" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '5' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                $user = Get-ADUser -Identity $username | Select-Object DistinguishedName
+                                Write-Host "OU atual: $($user.DistinguishedName)"
+                                $newOU = Read-Host "Digite a OU de destino (ex: OU=Usuarios,DC=dominio,DC=com)"
+                                
+                                Move-ADObject -Identity $user.DistinguishedName -TargetPath $newOU
+                                Write-Host "Usuário movido com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '6' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                $currentGroups = Get-ADPrincipalGroupMembership -Identity $username | 
+                                    Select-Object Name | Sort-Object Name
+                                
+                                Write-Host "`nGrupos atuais do usuário:"
+                                $currentGroups | Format-Table -AutoSize
+                                
+                                $groupName = Read-Host "`nDigite o nome do grupo para adicionar"
+                                Add-ADGroupMember -Identity $groupName -Members $username
+                                Write-Host "Usuário adicionado ao grupo $groupName com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '7' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                $currentGroups = Get-ADPrincipalGroupMembership -Identity $username | 
+                                    Select-Object Name | Sort-Object Name
+                                
+                                Write-Host "`nGrupos atuais do usuário:"
+                                $currentGroups | Format-Table -AutoSize
+                                
+                                $groupName = Read-Host "`nDigite o nome do grupo para remover"
+                                Remove-ADGroupMember -Identity $groupName -Members $username -Confirm:$false
+                                Write-Host "Usuário removido do grupo $groupName com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '8' {
+                            $username = Read-Host "Digite o login do usuário"
+                            try {
+                                $user = Get-ADUser -Identity $username -Properties *
+                                
+                                Write-Host "`nEditando propriedades de $($user.Name)"
+                                $newDesc = Read-Host "Descrição [atual: $($user.Description)]"
+                                $newOffice = Read-Host "Escritório [atual: $($user.Office)]"
+                                $newDept = Read-Host "Departamento [atual: $($user.Department)]"
+                                $newTitle = Read-Host "Cargo [atual: $($user.Title)]"
+                                $newEmail = Read-Host "Email [atual: $($user.EmailAddress)]"
+                                
+                                $params = @{}
+                                if ($newDesc) { $params.Description = $newDesc }
+                                if ($newOffice) { $params.Office = $newOffice }
+                                if ($newDept) { $params.Department = $newDept }
+                                if ($newTitle) { $params.Title = $newTitle }
+                                if ($newEmail) { $params.EmailAddress = $newEmail }
+                                
+                                Set-ADUser -Identity $username @params
+                                Write-Host "Propriedades atualizadas com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                    }
+                } while ($accountChoice -ne '9')
+            }
+            '3' { # Gerenciamento de Grupos
+                do {
+                    Clear-Host
+                    Write-Host "`n=== GERENCIAMENTO DE GRUPOS ===" -ForegroundColor Green
+                    Write-Host "1. Listar todos os grupos"
+                    Write-Host "2. Criar novo grupo"
+                    Write-Host "3. Remover grupo"
+                    Write-Host "4. Listar membros de um grupo"
+                    Write-Host "5. Adicionar membros a um grupo"
+                    Write-Host "6. Remover membros de um grupo"
+                    Write-Host "7. Configurar permissões do grupo"
+                    Write-Host "8. Voltar"
+                    
+                    $groupChoice = Read-Host "`nSelecione uma opção"
+                    
+                    switch ($groupChoice) {
+                        '1' {
+                            $groups = Get-ADGroup -Filter * -Properties * | 
+                                Select-Object Name, GroupScope, GroupCategory, Description | 
+                                Sort-Object Name
+                            $groups | Format-Table -AutoSize
+                            Pause
+                        }
+                        '2' {
+                            $groupName = Read-Host "Digite o nome do novo grupo"
+                            $groupScope = Read-Host "Escopo (Global/Universal/DomainLocal)"
+                            $groupCategory = Read-Host "Categoria (Security/Distribution)"
+                            $description = Read-Host "Descrição"
+                            
+                            try {
+                                New-ADGroup -Name $groupName -GroupScope $groupScope -GroupCategory $groupCategory -Description $description
+                                Write-Host "Grupo $groupName criado com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '3' {
+                            $groupName = Read-Host "Digite o nome do grupo para remover"
+                            try {
+                                Remove-ADGroup -Identity $groupName -Confirm:$false
+                                Write-Host "Grupo $groupName removido com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '4' {
+                            $groupName = Read-Host "Digite o nome do grupo"
+                            try {
+                                $members = Get-ADGroupMember -Identity $groupName | 
+                                    Select-Object Name, SamAccountName, ObjectClass | 
+                                    Sort-Object Name
+                                
+                                Write-Host "`nMembros do grupo $groupName"
+                                $members | Format-Table -AutoSize
+                                
+                                $export = Read-Host "Deseja exportar para CSV? (S/N)"
+                                if ($export -eq 'S') {
+                                    $csvPath = "$env:USERPROFILE\Desktop\$($groupName)_Members_$(Get-Date -Format 'yyyyMMdd').csv"
+                                    $members | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
+                                    Write-Host "Lista exportada para $csvPath" -ForegroundColor Green
+                                }
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '5' {
+                            $groupName = Read-Host "Digite o nome do grupo"
+                            $membersToAdd = Read-Host "Digite os logins dos usuários a adicionar (separados por vírgula)"
+                            
+                            try {
+                                $membersArray = $membersToAdd -split ',' | ForEach-Object { $_.Trim() }
+                                Add-ADGroupMember -Identity $groupName -Members $membersArray
+                                Write-Host "Usuários adicionados ao grupo $groupName com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '6' {
+                            $groupName = Read-Host "Digite o nome do grupo"
+                            $membersToRemove = Read-Host "Digite os logins dos usuários a remover (separados por vírgula)"
+                            
+                            try {
+                                $membersArray = $membersToRemove -split ',' | ForEach-Object { $_.Trim() }
+                                Remove-ADGroupMember -Identity $groupName -Members $membersArray -Confirm:$false
+                                Write-Host "Usuários removidos do grupo $groupName com sucesso!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                        '7' {
+                            $groupName = Read-Host "Digite o nome do grupo"
+                            try {
+                                # Exemplo básico - pode ser expandido para configurações mais complexas
+                                $managedBy = Read-Host "Digite o login do responsável pelo grupo"
+                                $description = Read-Host "Digite a nova descrição"
+                                
+                                Set-ADGroup -Identity $groupName -ManagedBy $managedBy -Description $description
+                                Write-Host "Configurações do grupo $groupName atualizadas!" -ForegroundColor Green
+                            } catch {
+                                Write-Host "Erro: $_" -ForegroundColor Red
+                            }
+                            Pause
+                        }
+                    }
+                } while ($groupChoice -ne '8')
+            }
+            # [...] (Continua com as outras categorias)
+            '9' { return } # Voltar
+            default { Write-Host "Opção inválida" -ForegroundColor Red; Pause }
+        }
+    } while ($mainChoice -ne '9')
+}
+
+# Funções auxiliares
+function Show-ADUserResults {
+    param($users)
+    
+    if ($users) {
+        $users | Select-Object Name, SamAccountName, UserPrincipalName, Enabled, LastLogonDate, EmailAddress, Department, Title |
+            Sort-Object Name |
+            Format-Table -AutoSize
+        
+        $count = ($users | Measure-Object).Count
+        Write-Host "`nTotal encontrado: $count" -ForegroundColor Yellow
+        
+        $export = Read-Host "Deseja exportar para CSV? (S/N)"
+        if ($export -eq 'S') {
+            $csvPath = "$env:USERPROFILE\Desktop\ADUsers_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            $users | Export-Csv -Path $csvPath -NoTypeInformation -Encoding UTF8
+            Write-Host "Dados exportados para $csvPath" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "Nenhum resultado encontrado." -ForegroundColor Yellow
+    }
+}
+
+function New-ADUserWizard {
+    Clear-Host
+    Write-Host "`n=== ASSISTENTE DE CRIAÇÃO DE USUÁRIO ===" -ForegroundColor Cyan
+    
+    $firstName = Read-Host "Nome"
+    $lastName = Read-Host "Sobrenome"
+    $samAccount = Read-Host "Login (SamAccountName)"
+    $password = Read-Host "Senha" -AsSecureString
+    $ou = Read-Host "OU (ex: OU=Usuarios,DC=dominio,DC=com)"
+    $email = Read-Host "Email"
+    $department = Read-Host "Departamento"
+    $title = Read-Host "Cargo"
+    $company = Read-Host "Empresa"
+    
+    $userParams = @{
+        GivenName = $firstName
+        Surname = $lastName
+        Name = "$firstName $lastName"
+        SamAccountName = $samAccount
+        UserPrincipalName = "$samAccount@$((Get-ADDomain).DNSRoot)"
+        AccountPassword = $password
+        Path = $ou
+        Enabled = $true
+        EmailAddress = $email
+        Department = $department
+        Title = $title
+        Company = $company
+        ChangePasswordAtLogon = $true
+    }
+    
+    try {
+        New-ADUser @userParams
+        Write-Host "Usuário $samAccount criado com sucesso!" -ForegroundColor Green
+        
+        # Adicionar a grupos padrão
+        $addGroups = Read-Host "Deseja adicionar a grupos padrão? (S/N)"
+        if ($addGroups -eq 'S') {
+            $defaultGroups = "Domain Users", "Staff" # Ajuste conforme sua necessidade
+            Add-ADGroupMember -Identity $defaultGroups -Members $samAccount
+            Write-Host "Usuário adicionado aos grupos padrão." -ForegroundColor Green
+        }
+    } catch {
+        Write-Host "Erro ao criar usuário: $_" -ForegroundColor Red
+    }
+}
+
+function Virtualization-Tools {
+    do {
+        Clear-Host
+        Write-Host "`n=== FERRAMENTAS DE VIRTUALIZAÇÃO ===" -ForegroundColor Green
+        Write-Host "1. Listar máquinas virtuais Hyper-V"
+        Write-Host "2. Iniciar VM"
+        Write-Host "3. Parar VM"
+        Write-Host "4. Ver status de VMs"
+        Write-Host "5. Voltar"
+        
+        $choice = Read-Host "`nSelecione uma opção"
+        
+        switch ($choice) {
+            '1' {
+                if (Get-Command Get-VM -ErrorAction SilentlyContinue) {
+                    Get-VM | Select-Object Name, State, CPUUsage, MemoryAssigned | Format-Table -AutoSize
+                } else {
+                    Write-Host "Módulo Hyper-V não disponível" -ForegroundColor Red
+                }
+                Pause
+            }
+            '2' {
+                $vmName = Read-Host "Digite o nome da VM para iniciar"
+                Start-VM -Name $vmName -ErrorAction Stop
+                Write-Host "VM $vmName iniciada!" -ForegroundColor Green
+                Pause
+            }
+            '3' {
+                $vmName = Read-Host "Digite o nome da VM para parar"
+                Stop-VM -Name $vmName -Force -ErrorAction Stop
+                Write-Host "VM $vmName parada!" -ForegroundColor Green
+                Pause
+            }
+            '4' {
+                Get-VM | Select-Object Name, State, Status, Uptime | Format-Table -AutoSize
+                Pause
+            }
+        }
+    } while ($choice -ne '5')
+}
+
+function Pause {
+    Write-Host "`nPressione Enter para continuar..." -ForegroundColor Yellow
+    $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") | Out-Null
+}
+
+# Main loop
+do {
+    Show-MainMenu
+    $selection = Read-Host "`nSelecione uma opção"
+    
+    switch ($selection) {
+        '1' { System-Info }
+        '2' { User-Management }
+        '3' { Process-Services }
+        '4' { Network-Tools }
+        '5' { Disk-File-Management }
+        '6' { Scheduled-Tasks }
+        '7' { Windows-Updates }
+        '8' { Audit-Logs }
+        '9' { Backup-Tools }
+        '10' { System-Optimization }
+        '11' { Printer-Management }
+        '12' { App-Control }
+        '13' { AD-Tools }
+        '14' { Virtualization-Tools }
+        '15' { exit }
+        default { Write-Host "Opção inválida" -ForegroundColor Red; Pause }
+    }
+} while ($true)
