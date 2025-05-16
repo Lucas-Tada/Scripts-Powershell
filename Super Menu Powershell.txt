@@ -1,12 +1,17 @@
 <#
     SUPER MENU POWERSHELL - FERRAMENTAS DIÁRIAS
-    Versão: 2.0 - Completo e Funcional
+    Versão: 2.1 - Completo e Funcional
+    Desenvolvido por: Lucas Tada
+    LinkedIn: https://www.linkedin.com/in/lucas-tada/
 #>
 
 function Show-MainMenu {
     Clear-Host
     Write-Host "================================================" -ForegroundColor Cyan
     Write-Host "|           SUPER MENU POWERSHELL             |" -ForegroundColor Yellow
+    Write-Host "|                                              |"
+    Write-Host "| Desenvolvido por Lucas Tada                  |"
+    Write-Host "| LinkedIn: https://www.linkedin.com/in/lucas-tada/ |"
     Write-Host "================================================" -ForegroundColor Cyan
     Write-Host "| 1.  Informações do Sistema                  |"
     Write-Host "| 2.  Gerenciamento de Usuários               |"
@@ -376,7 +381,8 @@ function Backup-Tools {
         Write-Host "1. Criar backup de arquivos"
         Write-Host "2. Restaurar backup"
         Write-Host "3. Verificar backups existentes"
-        Write-Host "4. Voltar"
+        Write-Host "4. Fazer backup de drivers"
+        Write-Host "5. Voltar"
         
         $choice = Read-Host "`nSelecione uma opção"
         
@@ -411,8 +417,29 @@ function Backup-Tools {
                 Get-ChildItem -Path $backupDir -Filter *.zip | Select-Object Name, LastWriteTime, Length | Format-Table -AutoSize
                 Pause
             }
+            '4' {
+                $destination = Read-Host "Digite o caminho para salvar o backup dos drivers (ex: D:\Backup\Drivers)"
+                
+                if (-not (Test-Path $destination)) {
+                    New-Item -ItemType Directory -Path $destination -Force
+                }
+                
+                Write-Host "`nColetando informações de drivers..."
+                $drivers = Get-WindowsDriver -Online -All
+                
+                $backupFile = "$destination\DriversBackup_$(Get-Date -Format 'yyyyMMdd').txt"
+                $drivers | Out-File -FilePath $backupFile
+                
+                Write-Host "`nExportando drivers para arquivo..."
+                Export-WindowsDriver -Online -Destination $destination
+                
+                Write-Host "`nBackup dos drivers concluído com sucesso!" -ForegroundColor Green
+                Write-Host "Local: $destination" -ForegroundColor Yellow
+                Write-Host "Arquivo de informações: $backupFile" -ForegroundColor Yellow
+                Pause
+            }
         }
-    } while ($choice -ne '4')
+    } while ($choice -ne '5')
 }
 
 function System-Optimization {
