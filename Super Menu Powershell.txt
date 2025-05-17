@@ -13,6 +13,7 @@ function Show-MainMenu {
     Write-Host "| Desenvolvido por Lucas Tada                  |"
     Write-Host "| LinkedIn: https://www.linkedin.com/in/lucas-tada/ |"
     Write-Host "================================================" -ForegroundColor Cyan
+    Write-Host "| 0.  Sair                                    |"
     Write-Host "| 1.  Informações do Sistema                  |"
     Write-Host "| 2.  Gerenciamento de Usuários               |"
     Write-Host "| 3.  Monitoramento de Processos/Serviços     |"
@@ -27,7 +28,6 @@ function Show-MainMenu {
     Write-Host "| 12. Controle de Aplicativos                 |"
     Write-Host "| 13. Ferramentas AD (Active Directory)       |"
     Write-Host "| 14. Virtualização                           |"
-    Write-Host "| 15. Sair                                    |"
     Write-Host "================================================" -ForegroundColor Cyan
 }
 
@@ -1071,6 +1071,7 @@ do {
     $selection = Read-Host "`nSelecione uma opção"
     
     switch ($selection) {
+        '0' { exit }
         '1' { System-Info }
         '2' { User-Management }
         '3' { Process-Services }
@@ -1085,7 +1086,6 @@ do {
         '12' { App-Control }
         '13' { AD-Tools }
         '14' { Virtualization-Tools }
-        '15' { exit }
         default { Write-Host "Opção inválida" -ForegroundColor Red; Pause }
     }
 } while ($true)
